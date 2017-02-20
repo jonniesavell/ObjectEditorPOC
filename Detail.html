@@ -1,0 +1,655 @@
+﻿<!-- TODO#1 begin @model SiteOne.Site.Models.GenericViewModel end -->
+<!-- TODO#2 begin -->
+<html>
+<body>
+<script
+    src="https://code.jquery.com/jquery-3.1.1.min.js"
+    integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+    crossorigin="anonymous"></script>
+<!-- TODO#2 end -->
+
+<div id="output"></div>
+
+<div id="dialogs">
+    <div id="dialog-SimpleTypes">
+        <form>
+            <label for="value-SimpleType">Value:</label>
+            <input type="text" id="value-SimpleType"/>
+        </form>
+    </div>
+
+    <div id="dialog-Date">
+        <form>
+            <label for="value-Date">Date:</label>
+            <input type="text" id="value-Date"/>
+        </form>
+    </div>
+
+    <div id="dialog-Boolean">
+        <form>
+            <input type="text" id="value-Boolean" hidden/>
+            <input type="checkbox" id="checkbox-Boolean"/>
+        </form>
+    </div>
+
+    <div id="dialog-ReferenceType">
+        <form>
+            <label for="value-ReferenceType">identifier:</label>
+            <input type="text" id="value-ReferenceType" />
+        </form>
+
+        <div id="list-view-area">
+        </div>
+    </div>
+</div>
+
+<script id="failure-template" type="text/x-handlebars-template">
+    <div class="error">communications with the back-end have been disrupted.</div>
+</script>
+
+<script id="success-template" type="text/x-handlebars-template">
+    <table id="tbl">
+        <thead>
+            <tr>
+                <th style="display:none;">OwnerId</th>
+                <th style="display:none;">ValueType</th>
+                <th>Property</th>
+                <th>Value</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each ResultSet}}
+            <tr id="{{Property}}" class="{{Type}} {{ValueType}} {{#if IsMutable}}mutable{{else}}immutable{{/if}}">
+                <td style="display:none;">{{OwnerId}}</td>
+                <td style="display:none;">{{ValueType}}</td>
+                <td>{{Property}}</td>
+                <td>{{Value}}</td>
+                <td>{{Type}}</td>
+                <td class="attachment-site"></td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</script>
+
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.12.0/themes/smoothness/jquery-ui.css"/>
+
+<!-- TODO surgery #6 begin: reach KendoUI -->
+<!-- link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-timepicker-addon/1.6.1/jquery-ui-timepicker-addon.min.css"/ -->
+<link rel="stylesheet" href="http://kendo.cdn.telerik.com/2017.1.118/styles/kendo.common.min.css">
+<link rel="stylesheet" href="http://kendo.cdn.telerik.com/2017.1.118/styles/kendo.metro.min.css">
+<script src="http://kendo.cdn.telerik.com/2017.1.118/js/kendo.all.min.js"></script>
+<!-- TODO surgery #6 end -->
+
+<script
+    src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.js">
+</script>
+<script
+    src="https://code.jquery.com/ui/1.12.0/jquery-ui.js" integrity="sha256-0YPKAwZP7Mp3ALMRVB2i8GXeEndvCq3eSl/WsAl1Ryk="
+    crossorigin="anonymous">
+</script>
+
+<!-- TODO surgery #7 begin: remove infinity.js and oulde timepicker detritus
+<script
+    src="https://cdnjs.cloudflare.com/ajax/libs/infinity/0.2.2/infinity.min.js">
+</script>
+<!-- script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-timepicker-addon/1.6.1/jquery-ui-timepicker-addon.js">
+</script ->
+-->
+
+<script>
+    function rowToRecord( row ) {
+        "use strict";
+
+        /*
+         * TODO: use this function everywhere you see text accesses initiated from row: NOW
+         */
+
+        var result = {},
+            $row = $( row );
+
+        result.ownerId = $row.find( "td" ).eq( 0 ).text();
+        result.valueType = $row.find( "td" ).eq( 1 ).text();
+        result.property = $row.find( "td" ).eq( 2 ).text();
+        result.value = $row.find( "td" ).eq( 3 ).text();
+        result.type = $row.find( "td" ).eq( 4 ).text();
+
+        return result;
+    }
+
+    function initialize( data, referencesInspectedCallback, updatePropertyCallback ) {
+        "use strict";
+
+        // (1) hide the dialogs while content is being loaded
+        $( "#dialogs" ).hide();
+
+        // (2) prepare the templates, one of which holds the list of properties
+        var failureTemplate = Handlebars.compile( $( "#failure-template" ).html() );
+        var successTemplate = Handlebars.compile( $( "#success-template" ).html() );
+
+        // (3) bind data to the DOM
+        var output = successTemplate( data );
+        $( "#output" ).html( output );
+
+        //////////////////////////////////////////////////////////////////
+        // (4) begin: setup of notifications
+        //////////////////////////////////////////////////////////////////
+
+        // NOTES: interesting test: if ( $( element ).find( "button.DateTime" ).length > 0 ) {
+
+        // setup notifications ("editWindowOpened")
+        $( "#dialogs" ).on( "editWindowOpened", function( event, element ) {
+
+            // highlight currently selected row
+            $( element ).addClass( "selected" );
+        } );
+
+        $( "#dialogs" ).on( "editWindowOpened", function( event, element ) {
+
+            // disable all buttons in the table
+            $( "#tbl tr button" ).prop( "disabled", true );
+        } );
+
+        // setup notifications ("editWindowClosed")
+        $( "#dialogs" ).on( "editWindowClosed", function( event, element ) {
+
+            // remove the highlight from the freshly unselected row
+            $( element ).removeClass( "selected" );
+        } );
+
+        $( "#dialogs" ).on( "editWindowClosed", function( event, element ) {
+
+            // reenable all buttons in the table
+            $( "#tbl tr button" ).prop( "disabled", false );
+        } );
+
+        $( "#dialogs" ).on( "referenceInspected", function( event, element ) {
+
+            // retrieve the appropriate list of references from which to choose
+            // surgery #3 removal of AJAX call and addition of use of callback
+
+            referencesInspectedCallback(
+                element.property,
+                function( data ) {
+                    $( '#list-view-area' ).kendoGrid({
+//                        dataSource: {
+//                            type: "odata",
+//                            transport: {
+//                                read: "https://demos.telerik.com/kendo-ui/service/Northwind.svc/Customers"
+//                            },
+//                            pageSize: 20
+//                        },
+                        dataSource: [],
+                        height: 550,
+                        groupable: true,
+                        sortable: true,
+                        pageable: {
+                            refresh: true,
+                            pageSizes: true,
+                            buttonCount: 5
+                        },
+                        columns: [{
+                            //"<div class='customer-photo'" +
+                            //"style='background-image: url(../content/web/Customers/#:data.CustomerID#.jpg);'></div>" +
+                            template: "<div class='customer-name'>#: ContactName #</div>",
+                            field: "ContactName",
+                            title: "Contact Name",
+                            width: 240
+                        }, {
+                            field: "ContactTitle",
+                            title: "Contact Title"
+                        }, {
+                            field: "CompanyName",
+                            title: "Company Name"
+                        }, {
+                            field: "Country",
+                            width: 150
+                        }]
+                    });
+                },
+                function() {
+
+                    // TODO: meaningfull error handling
+                }
+            );
+        } );
+
+        $( "#dialogs" ).on( "propertyUpdated" , function ( event, pkg ) {
+
+            // TODO: this function should NOT be touching the row: BAAAD! use rowToRecord
+            var valueType = $( pkg.row ).find( "td" ).eq( 1 ).text(),
+                property = $( pkg.row ).find( "td" ).eq( 2 ).text(),
+                type = $( pkg.row ).find( "td" ).eq( 4 ).text(),
+                value = pkg.requestedValue;
+
+            // surgery #4 removal of AJAX call and addition of use of callback
+            updatePropertyCallback(
+                property,
+                valueType,
+                type,
+                value,
+                function( data ) {
+
+                    $( pkg.row ).find( "td" ).eq( 3 ).text( data.Value );
+                    $( pkg.dialogOwner ).dialog( "close" );
+                },
+                function() {
+
+                    // TODO: policy: keep the dialog open and flash an error message
+                    $( pkg.dialogOwner ).dialog( "close" );
+                    var output = failureTemplate();
+                    $( '#output' ).html( output );
+                }
+            );
+        } );
+
+        //////////////////////////////////////////////////////////////////
+        // (5) begin: creation of dialogs
+        //////////////////////////////////////////////////////////////////
+
+        // create the dialog for the reference type
+        // listView = new infinity.ListView( $("#list-view-area") );
+        // TODO: we need to initialize some data structure
+
+        $( "#dialog-ReferenceType" ).dialog( {
+            autoOpen: false,
+            open: function () {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowOpened", row );
+
+                var parcel = rowToRecord( row );
+                $( "#dialogs" ).trigger( "referenceInspected", parcel );
+            },
+            close: function () {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowClosed", row );
+            },
+            buttons: {
+                Update: function () {
+                    var value = $( "#value-ReferenceType" ).val(),
+                        row = $( this ).data( "editingRow" ),
+                        parcel = {
+                            'row': row,
+                            'requestedValue': value,
+                            'dialogOwner': this
+                        };
+                    // TODO: replace this madness with use of rowToRecord.
+
+                    $( "#dialogs" ).trigger( "propertyUpdated", parcel );
+                },
+                Cancel: function () {
+
+                    $( this ).dialog( "close" );
+                }
+            }
+        } );
+
+        // create the dialog for simple types
+        $( "#dialog-SimpleTypes" ).dialog( {
+            autoOpen: false,
+            open: function () {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowOpened", row );
+            },
+            close: function () {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowClosed", row );
+            },
+            buttons: {
+                Update: function () {
+                    var value = $( "#value-SimpleType" ).val(),
+                        row = $( this ).data( "editingRow" ),
+                        parcel = {
+                            'row': row,
+                            'requestedValue': value,
+                            'dialogOwner': this
+                        };
+
+                    $( "#dialogs" ).trigger( "propertyUpdated", parcel );
+                },
+                Cancel: function () {
+
+                    $( this ).dialog( "close" );
+                }
+            }
+        } );
+
+        $( "#checkbox-Boolean" ).on( 'change', function() {
+            if (this.checked) {
+                $( "#value-Boolean" ).val( "True" );
+            } else {
+                $( "#value-Boolean" ).val( "False" );
+            }
+        } );
+
+        $( "#dialog-Boolean" ).dialog( {
+            autoOpen: false,
+            open: function () {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowOpened", row );
+            },
+            close: function () {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowClosed", row );
+            },
+            buttons: {
+                Update: function () {
+                    var value = $( "#value-Boolean" ).val(),
+                        row = $( this ).data( "editingRow" ),
+                        parcel = {
+                            'row': row,
+                            'requestedValue': value,
+                            'dialogOwner': this
+                        };
+
+                    $( "#dialogs" ).trigger( "propertyUpdated", parcel );
+                },
+                Cancel: function () {
+
+                    $( this ).dialog( "close" );
+                }
+            }
+        } );
+
+        // create the dialog for Date types (mount datepicker to '#value-Date')
+        $( "#dialog-Date" ).dialog( {
+            autoOpen: false,
+            open: function() {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowOpened", row );
+            },
+            close: function() {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowClosed", row );
+            },
+            buttons: {
+                Update: function() {
+                    var value = $( "#value-Date" ).val(),
+                        row = $( this ).data( "editingRow" ),
+                        parcel = {
+                            'row': row,
+                            'requestedValue': value,
+                            'dialogOwner': this
+                        };
+
+                    $( "#dialogs" ).trigger( "propertyUpdated", parcel );
+                },
+                Cancel: function() {
+
+                    $( this ).dialog( "close" );
+                }
+            }
+        } );
+
+// TODO: resurrect this for the day when we need a proper picker for the DateTime type
+//                $( "#value-Date" ).datetimepicker( {
+//                    dateFormat: "yy-mm-ddT",
+//                    timeFormat: "HH:mm:ss Z"
+//                } );
+
+        $( "#value-Date" ).datepicker( {
+            dateFormat: "mm/dd/yy",
+            minDate: 0
+        } );
+
+        //////////////////////////////////////////////////////////////////
+        // (6) begin: setup of edit buttons
+        //////////////////////////////////////////////////////////////////
+
+        // NOTE how we coalesce several property types and assign a single callback function.
+        // TODO: we still need to establish verification routines that can be called prior
+        // TODO:   to update.
+
+        // dynamically append a button to mutable properties
+        $( "tr.mutable > td.attachment-site" ).append( "<button>Edit</button>" );
+
+        $( "#tbl" ).on( "click",
+                "tr.Reference.mutable > td > button",
+                function() {
+                    var row = $( this ).parents( "tr" ),
+                        type = row.find( "td" ).eq( 4 ).text(),
+                        value = row.find( "td" ).eq( 3 ).text();
+
+                    // transfer value to form
+                    $( "#value-ReferenceType" ).val( value );
+
+                    $( "#dialog-ReferenceType" )
+                        .dialog( "option", {
+                            title: "Editing " + type + " content"
+                        } )
+                        .data( "editingRow", row )
+                        .dialog( "open" );
+                } );
+
+        $( "#tbl" ).on( "click",
+                "tr.String.mutable > td > button, tr.Number.mutable > td > button",
+                function () {
+                    var row = $( this ).parents( "tr" ),
+                        type = row.find( "td" ).eq( 4 ).text(),
+                        value = row.find( "td" ).eq( 3 ).text();
+
+                    // transfer value to form
+                    $( "#value-SimpleType" ).val( value );
+
+                    $( "#dialog-SimpleTypes" )
+                        .dialog( "option", {
+                            title: "Editing " + type + " content"
+                        } )
+                        .data( "editingRow", row )
+                        .dialog( "open" );
+                } );
+
+        $( "#tbl" ).on( "click",
+                "tr.boolean.mutable > td > button",
+                function () {
+                    var row = $( this ).parents( "tr" ),
+                        type = row.find( "td" ).eq( 4 ).text(),
+                        value = row.find( "td" ).eq( 3 ).text();
+
+                    // TODO: are we handling null values appropriately? what if value is null?
+
+                    // transfer value to form
+                    $( "#value-Boolean" ).val( value );
+
+                    // synchronize the checkbox
+                    if (value === "True") {
+                        $( "#checkbox-Boolean" ).attr( "checked", true );
+                    } else {
+                        // NOTE: This is not to say that the value is "False"
+                        //         as it may be null.
+                        $( "#checkbox-Boolean" ).attr( "checked", false );
+                    }
+
+                    $( "#dialog-Boolean" )
+                        .dialog( "option", {
+                            title: "Editing " + type + " content"
+                        } )
+                        .data( "editingRow", row )
+                        .dialog( "open" );
+                } );
+
+        // TODO: change type DateTime to Date
+        $( "#tbl" ).on( "click",
+                "tr.DateTime.mutable > td > button",
+                function() {
+                    var row = $( this ).parents( "tr" ),
+                        type = row.find( "td" ).eq( 4 ).text(),
+                        value = row.find( "td" ).eq( 3 ).text();
+
+                    // transfer value to form
+                    $( "#value-Date" ).val( value );
+
+                    $( "#dialog-Date" )
+                        .dialog( "option", {
+                            title: "Editing " + type + " content"
+                        } )
+                        .data( "editingRow", row )
+                        .dialog( "open" );
+                } );
+    }
+
+    var FauxDataSourceService = function() {
+        "use strict";
+
+        this.updateProperty = function( segment, id, propertyName, valueType, type, value, successCallback, failureCallback ) {
+            "use strict";
+
+            successCallback( {
+                'OwnerId': id,
+                'ValueType': valueType,
+                'Property': propertyName,
+                'Value': value,
+                'Type': type,
+                'IsMutable': true
+            } );
+        };
+
+        this.retrieveProperties = function( segment, id, successCallback ) {
+            "use strict";
+
+            successCallback( {
+                'ResultSet': [
+                    {
+                        'ValueType': 'Value',
+                        'Value': 'pants',
+                        'OwnerId': 31,
+                        'Property': 'WhatToWear',
+                        'Type': 'String',
+                        'IsMutable': true
+                    }, {
+                        'ValueType': 'Value',
+                        'Value': 5150,
+                        'OwnerId': 31,
+                        'Property': 'MentalState',
+                        'Type': 'Number',
+                        'IsMutable': true
+                    }, {
+                        'ValueType': 'Value',
+                        'Value': true,
+                        'OwnerId': 31,
+                        'Property': 'HowBrokeAmI',
+                        'Type': 'boolean',
+                        'IsMutable': false
+                    }, {
+                        'ValueType': 'Reference',
+                        'Value': 78,
+                        'OwnerId': 31,
+                        'Property': 'Subcontractor',
+                        'Type': 'Number',
+                        'IsMutable': false
+                    }, {
+                        'ValueType': 'Reference',
+                        'Value': 90210,
+                        'OwnerId': 31,
+                        'Property': 'Architect',
+                        'Type': 'Number',
+                        'IsMutable': true
+                    }
+                ]
+            } );
+        };
+    };
+
+    var DataSourceService = function() {
+        "use strict";
+
+        this.updateProperty = function( segment, id, propertyName, valueType, type, value, successCallback, failureCallback ) {
+            "use strict";
+
+            $.ajax( {
+                url: '/api/' + segment + '/' + id + '/properties/' + propertyName,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify( {
+                    'OwnerId': id,
+                    'ValueType': valueType,
+                    'Property': propertyName,
+                    'Value': value,
+                    'Type': type
+                } ),
+                success: function( data, textStatus, jqXHR ) {
+
+                    successCallback( data );
+                },
+                error: function( jqXHR, textStatus, errorThrown ) {
+
+                    failureCallback( textStatus, errorThrown );
+                }
+            } );
+        };
+
+        this.retrieveProperties = function( segment, id, successCallback ) {
+            "use strict";
+
+            // retrieve the list of properties and prepare the page once this list is available
+            $.ajax( {
+                url: '/api/' + segment + '/' + id + '/properties',
+                type: 'GET',
+                contentType: 'application/json',
+                success: function ( data, textStatus, jqXHR ) {
+                    // surgery #1: removal of function and creation of initialize
+                    successCallback( data );
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    //var output = failureTemplate(); // <-- TODO: error
+                    //$( "#output" ).html( output );
+                }
+            } );
+        };
+
+        this.retrievePropertyOptions = function( segment, propertyName, successCallback, failureCallback ) {
+            "use strict";
+
+            $.ajax( {
+                url: '/api/' + segment + '/propertyValueOptions/' + propertyName,
+                type: 'GET',
+                contentType: 'application/json',
+                success: function ( data, textStatus, jqXHR ) {
+
+                    successCallback( data );
+                },
+                error: function ( jqXHR, textStatus, errorThrown ) {
+
+                    failureCallback();
+
+                    console.log( textStatus + ',' + errorThrown );
+                }
+            } );
+        }
+    };
+
+    var id = 31, // TODO#3 begin @Model.Identifiable.Id end
+        segment = 'rfsItem',
+        dataSourceService = new DataSourceService(),
+        fauxDataSourceService = new FauxDataSourceService();
+
+    // surgery: extraction of AJAX call from IIFE
+    fauxDataSourceService.retrieveProperties(
+        id,
+        'rfsItem',
+        function( data ) {
+            initialize(
+                data,
+                function( propertyName, successCallback, failureCallback ) {
+                    dataSourceService.retrievePropertyOptions( segment, propertyName, successCallback, failureCallback );
+                },
+                function( propertyName, valueType, type, value, successCallback, failureCallback ) {
+                    fauxDataSourceService.updateProperty( segment, id, propertyName, valueType, type, value, successCallback, failureCallback );
+                }
+            );
+        }
+    );
+</script>
+
+<style type='text/css'>
+    .selected {
+        color: red;
+    }
+</style>
+
+<!-- TODO#2 begin -->
+</body>
+</html>
+<!-- TODO#2 end -->
