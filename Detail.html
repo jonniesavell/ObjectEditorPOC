@@ -165,48 +165,46 @@
             $( "#tbl tr button" ).prop( "disabled", false );
         } );
 
+        var objectToColumnArray = function( o ) {
+            "use strict";
+
+            var property,
+                propertyValue,
+                result = [];
+
+            for (property in o) {
+                if (o.hasOwnProperty(property)) {
+                    if (new String(property).valueOf() == "PropertyValues") {
+                        for (propertyValue in o[property]) {
+                            result.push({
+                                title: "PropertyValues[" + propertyValue + "]",
+                                field: "PropertyValues['" + propertyValue + "']"
+                            });
+                        }
+                    } else {
+                        result.push({
+                            title: property,
+                            field: property
+                        });
+                    }
+                }
+            }
+
+            return result;
+        };
+
         $( "#dialogs" ).on( "referenceInspected", function( event, element ) {
 
             // retrieve the appropriate list of references from which to choose
-            // surgery #3 removal of AJAX call and addition of use of callback
-
             referencesInspectedCallback(
                 element.property,
                 function( data ) {
-                    $( '#list-view-area' ).kendoGrid({
-//                        dataSource: {
-//                            type: "odata",
-//                            transport: {
-//                                read: "https://demos.telerik.com/kendo-ui/service/Northwind.svc/Customers"
-//                            },
-//                            pageSize: 20
-//                        },
-                        dataSource: [],
-                        height: 550,
-                        groupable: true,
-                        sortable: true,
-                        pageable: {
-                            refresh: true,
-                            pageSizes: true,
-                            buttonCount: 5
-                        },
-                        columns: [{
-                            //"<div class='customer-photo'" +
-                            //"style='background-image: url(../content/web/Customers/#:data.CustomerID#.jpg);'></div>" +
-                            template: "<div class='customer-name'>#: ContactName #</div>",
-                            field: "ContactName",
-                            title: "Contact Name",
-                            width: 240
-                        }, {
-                            field: "ContactTitle",
-                            title: "Contact Title"
-                        }, {
-                            field: "CompanyName",
-                            title: "Company Name"
-                        }, {
-                            field: "Country",
-                            width: 150
-                        }]
+                    $( "#list-view-area" ).kendoGrid( {
+                        dataSource: data.ResultSet,
+                        height: 350,
+                        groupable: false,
+                        sortable: false,
+                        columns: data.ResultSet.length <= 0 ? [] : objectToColumnArray( data.ResultSet[0] )
                     });
                 },
                 function() {
@@ -214,6 +212,13 @@
                     // TODO: meaningfull error handling
                 }
             );
+        } );
+
+        $( "#dialogs" ).on( "referenceInspectionComplete", function( event, element ) {
+
+            $( "#list-view-area" ).data( "kendoGrid" ).destroy();
+
+            $( "#list-view-area" ).empty();
         } );
 
         $( "#dialogs" ).on( "propertyUpdated" , function ( event, pkg ) {
@@ -265,6 +270,7 @@
             close: function () {
                 var row = $( this ).data( "editingRow" );
                 $( "#dialogs" ).trigger( "editWindowClosed", row );
+                $( "#dialogs" ).trigger( "referenceInspectionComplete", row );
             },
             buttons: {
                 Update: function () {
@@ -527,25 +533,115 @@
                         'IsMutable': true
                     }, {
                         'ValueType': 'Value',
-                        'Value': true,
+                        'Value': 'True',
                         'OwnerId': 31,
                         'Property': 'HowBrokeAmI',
                         'Type': 'boolean',
-                        'IsMutable': false
+                        'IsMutable': true
                     }, {
                         'ValueType': 'Reference',
                         'Value': 78,
                         'OwnerId': 31,
                         'Property': 'Subcontractor',
-                        'Type': 'Number',
-                        'IsMutable': false
+                        'Type': 'SiteOne.Common.Data.Subcontractor',
+                        'IsMutable': true
                     }, {
                         'ValueType': 'Reference',
                         'Value': 90210,
                         'OwnerId': 31,
                         'Property': 'Architect',
                         'Type': 'Number',
-                        'IsMutable': true
+                        'IsMutable': false
+                    }
+                ]
+            } );
+        };
+
+        this.retrievePropertyOptions = function( segment, propertyName, successCallback, failureCallback ) {
+            "use strict";
+
+            successCallback( {
+                'ResultSet': [
+                    {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Gerhardt' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Bobbie' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Kirsch' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'FriskieB' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Gerhardt' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Bobbie' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Kirsch' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'FriskieB' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Gerhardt' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Bobbie' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Kirsch' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'FriskieB' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Gerhardt' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Bobbie' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Kirsch' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'FriskieB' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Gerhardt' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Bobbie' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'Kirsch' }
+                    }, {
+                        Id: 0,
+                        Type: 'String',
+                        PropertyValues: { value: 'FriskieB' }
                     }
                 ]
             } );
@@ -625,7 +721,10 @@
         dataSourceService = new DataSourceService(),
         fauxDataSourceService = new FauxDataSourceService();
 
-    // surgery: extraction of AJAX call from IIFE
+    // TODO: one callback for static properties
+    // TODO: &
+    // TODO: one callback for per instance properties
+    // TODO: different endpoints require different client-service signatures
     fauxDataSourceService.retrieveProperties(
         id,
         'rfsItem',
@@ -633,7 +732,7 @@
             initialize(
                 data,
                 function( propertyName, successCallback, failureCallback ) {
-                    dataSourceService.retrievePropertyOptions( segment, propertyName, successCallback, failureCallback );
+                    fauxDataSourceService.retrievePropertyOptions( segment, propertyName, successCallback, failureCallback );
                 },
                 function( propertyName, valueType, type, value, successCallback, failureCallback ) {
                     fauxDataSourceService.updateProperty( segment, id, propertyName, valueType, type, value, successCallback, failureCallback );
