@@ -119,6 +119,22 @@
         return result;
     }
 
+    function objectToColumnArray( o ) {
+        "use strict";
+
+        var propertyValue,
+            result = [];
+
+        for (propertyValue in o["PropertyValues"]) {
+            result.push( {
+                title: propertyValue,
+                field: "PropertyValues['" + propertyValue + "']"
+            } );
+        }
+
+        return result;
+    };
+
     function initialize( data, referencesInspectedCallback, updatePropertyCallback ) {
         "use strict";
 
@@ -165,47 +181,43 @@
             $( "#tbl tr button" ).prop( "disabled", false );
         } );
 
-        var objectToColumnArray = function( o ) {
-            "use strict";
-
-            var property,
-                propertyValue,
-                result = [];
-
-            for (property in o) {
-                if (o.hasOwnProperty(property)) {
-                    if (new String(property).valueOf() == "PropertyValues") {
-                        for (propertyValue in o[property]) {
-                            result.push({
-                                title: "PropertyValues[" + propertyValue + "]",
-                                field: "PropertyValues['" + propertyValue + "']"
-                            });
-                        }
-                    } else {
-                        result.push({
-                            title: property,
-                            field: property
-                        });
-                    }
-                }
-            }
-
-            return result;
-        };
-
         $( "#dialogs" ).on( "referenceInspected", function( event, element ) {
 
             // retrieve the appropriate list of references from which to choose
+            //   and allows the user to select
+            //
+            // http://docs.telerik.com/kendo-ui/api/javascript/ui/grid (Events > change)
+
             referencesInspectedCallback(
                 element.property,
                 function( data ) {
+
                     $( "#list-view-area" ).kendoGrid( {
                         dataSource: data.ResultSet,
-                        height: 350,
+                        height: 300,
                         groupable: false,
                         sortable: false,
-                        columns: data.ResultSet.length <= 0 ? [] : objectToColumnArray( data.ResultSet[0] )
-                    });
+                        columns: data.ResultSet.length <= 0 ? [] : objectToColumnArray( data.ResultSet[0] ),
+                        selectable: "row",
+                        change: function( e ) {
+                            var selectedRows = this.select(),
+                                selectedItems = [],
+                                position,
+                                dataItem;
+
+                            // collect selected items: we know that there will be only one
+                            for (position = 0; position < selectedRows.length; position++) {
+
+                                dataItem = this.dataItem(selectedRows[position]);
+                                selectedItems.push(dataItem);
+                            }
+
+                            // prepare the transfer of data to #value-ReferenceType
+                            if (selectedItems.length > 0) {
+                                $( "#value-ReferenceType" ).val( selectedItems[0].PropertyValues.value );
+                            }
+                        }
+                    } );
                 },
                 function() {
 
@@ -216,6 +228,7 @@
 
         $( "#dialogs" ).on( "referenceInspectionComplete", function( event, element ) {
 
+            // http://docs.telerik.com/kendo-ui/intro/widget-basics/destroy
             $( "#list-view-area" ).data( "kendoGrid" ).destroy();
 
             $( "#list-view-area" ).empty();
@@ -550,7 +563,7 @@
                         'Value': 90210,
                         'OwnerId': 31,
                         'Property': 'Architect',
-                        'Type': 'Number',
+                        'Type': 'SiteOne.Common.Data.Architect',
                         'IsMutable': false
                     }
                 ]
@@ -560,90 +573,21 @@
         this.retrievePropertyOptions = function( segment, propertyName, successCallback, failureCallback ) {
             "use strict";
 
+            // http://www.jstips.co/en/create-range-0...n-easily-using-one-line/
+            // http://stackoverflow.com/questions/18947892/creating-range-in-javascript-strange-syntax
             successCallback( {
-                'ResultSet': [
-                    {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Gerhardt' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Bobbie' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Kirsch' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'FriskieB' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Gerhardt' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Bobbie' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Kirsch' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'FriskieB' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Gerhardt' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Bobbie' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Kirsch' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'FriskieB' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Gerhardt' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Bobbie' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Kirsch' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'FriskieB' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Gerhardt' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Bobbie' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'Kirsch' }
-                    }, {
-                        Id: 0,
-                        Type: 'String',
-                        PropertyValues: { value: 'FriskieB' }
-                    }
-                ]
+                'ResultSet':
+                        Array.apply(null, { length: 121 })
+                                .map(Function.call, Number)
+                                .map(
+                                     function(element) {
+                                         return {
+                                             Id: 0,
+                                             Type: "String",
+                                             PropertyValues: { value: element, name: ("Gerhardt " + element) }
+                                         };
+                                     }
+                                 )
             } );
         };
     };
