@@ -25,6 +25,13 @@
         </form>
     </div>
 
+    <div id="dialog-DateTime">
+        <form>
+            <label for="value-DateTime">DateTime:</label>
+            <input type="text" id="value-DateTime"/>
+        </form>
+    </div>
+
     <div id="dialog-Boolean">
         <form>
             <input type="text" id="value-Boolean" hidden/>
@@ -80,6 +87,7 @@
 <link rel="stylesheet" href="http://kendo.cdn.telerik.com/2017.1.118/styles/kendo.common.min.css">
 <link rel="stylesheet" href="http://kendo.cdn.telerik.com/2017.1.118/styles/kendo.metro.min.css">
 <script src="http://kendo.cdn.telerik.com/2017.1.118/js/kendo.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/moment-with-locales.min.js"></script>
 <!-- TODO surgery #6 end -->
 
 <script
@@ -267,10 +275,6 @@
         // (5) begin: creation of dialogs
         //////////////////////////////////////////////////////////////////
 
-        // create the dialog for the reference type
-        // listView = new infinity.ListView( $("#list-view-area") );
-        // TODO: we need to initialize some data structure
-
         $( "#dialog-ReferenceType" ).dialog( {
             autoOpen: false,
             open: function () {
@@ -402,16 +406,66 @@
             }
         } );
 
-// TODO: resurrect this for the day when we need a proper picker for the DateTime type
-//                $( "#value-Date" ).datetimepicker( {
-//                    dateFormat: "yy-mm-ddT",
-//                    timeFormat: "HH:mm:ss Z"
-//                } );
-
         $( "#value-Date" ).datepicker( {
             dateFormat: "mm/dd/yy",
             minDate: 0
         } );
+
+        $( "#dialog-DateTime" ).dialog( {
+            autoOpen: false,
+            open: function() {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowOpened", row );
+            },
+            close: function() {
+                var row = $( this ).data( "editingRow" );
+                $( "#dialogs" ).trigger( "editWindowClosed", row );
+            },
+            buttons: {
+                Update: function() {
+                    var value = $( "#value-DateTime" ).val(),
+                        row = $( this ).data( "editingRow" ),
+                        parcel = {
+                            'row': row,
+                            'requestedValue': value,
+                            'dialogOwner': this
+                        };
+
+                    $( "#dialogs" ).trigger( "propertyUpdated", parcel );
+                },
+                Cancel: function() {
+
+                    $( this ).dialog( "close" );
+                }
+            }
+        } );
+
+        $( "#value-DateTime" ).kendoDateTimePicker( {
+//          format: "M/d/yyyy h:mm tt",
+            animation: {
+                close: {
+                    effects: "fadeOut zoom:out",
+                    duration: 300
+                },
+                open: {
+                    effects: "fadeIn zoom:in",
+                    duration: 300
+                }
+            },
+            // http://www.telerik.com/forums/format-of-datepicker-value
+            change: function() {
+                var value = this.value(),
+                    stringValue = kendo.toString(value, "yyyy-MM-ddTHH:mm:ss");
+
+                console.log('value ' + stringValue + ' of type ' + typeof(stringValue));
+            }
+        } );
+
+// TODO: resurrect this for the day when we need a proper picker for the DateTime type
+//      $( "#value-Date" ).datetimepicker( {
+//          dateFormat: "yy-mm-ddT",
+//          timeFormat: "HH:mm:ss Z"
+//      } );
 
         //////////////////////////////////////////////////////////////////
         // (6) begin: setup of edit buttons
@@ -424,7 +478,8 @@
         // dynamically append a button to mutable properties
         $( "tr.mutable > td.attachment-site" ).append( "<button>Edit</button>" );
 
-        $( "#tbl" ).on( "click",
+        $( "#tbl" ).on(
+                "click",
                 "tr.Reference.mutable > td > button",
                 function() {
                     var row = $( this ).parents( "tr" ),
@@ -442,7 +497,8 @@
                         .dialog( "open" );
                 } );
 
-        $( "#tbl" ).on( "click",
+        $( "#tbl" ).on(
+                "click",
                 "tr.String.mutable > td > button, tr.Number.mutable > td > button",
                 function () {
                     var row = $( this ).parents( "tr" ),
@@ -460,7 +516,8 @@
                         .dialog( "open" );
                 } );
 
-        $( "#tbl" ).on( "click",
+        $( "#tbl" ).on(
+                "click",
                 "tr.boolean.mutable > td > button",
                 function () {
                     var row = $( this ).parents( "tr" ),
@@ -489,9 +546,8 @@
                         .dialog( "open" );
                 } );
 
-        // TODO: change type DateTime to Date
         $( "#tbl" ).on( "click",
-                "tr.DateTime.mutable > td > button",
+                "tr.Date.mutable > td > button",
                 function() {
                     var row = $( this ).parents( "tr" ),
                         type = row.find( "td" ).eq( 4 ).text(),
@@ -506,6 +562,25 @@
                         } )
                         .data( "editingRow", row )
                         .dialog( "open" );
+                } );
+
+        $( "#tbl" ).on(
+                "click",
+                "tr.DateTime.mutable > td > button",
+                function() {
+                    var row = $( this ).parents( "tr" ),
+                            type = row.find( "td" ).eq( 4 ).text(),
+                            value = row.find( "td" ).eq( 3 ).text();
+
+                    // transfer value to form
+                    $( "#value-DateTime" ).val( value );
+
+                    $( "#dialog-DateTime" )
+                            .dialog( "option", {
+                                title: "Editing " + type + " content"
+                            } )
+                            .data( "editingRow", row )
+                            .dialog( "open" );
                 } );
     }
 
@@ -531,6 +606,13 @@
             successCallback( {
                 'ResultSet': [
                     {
+                        'ValueType': 'Value',
+                        'Value': null,
+                        'OwnerId': 31,
+                        'Property': 'WhenToDance',
+                        'Type': 'DateTime',
+                        'IsMutable': true
+                    }, {
                         'ValueType': 'Value',
                         'Value': 'pants',
                         'OwnerId': 31,
