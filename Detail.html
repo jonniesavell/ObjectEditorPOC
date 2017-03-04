@@ -133,6 +133,12 @@
         var propertyValue,
             result = [];
 
+//      TODO: policy: deliberately removed ids from values listed. use PropertyValues['value'] instead
+//      result.push( {
+//          title: "ID",
+//          field: "Id"
+//      } );
+
         for (propertyValue in o["PropertyValues"]) {
             result.push( {
                 title: propertyValue,
@@ -221,7 +227,9 @@
                             }
 
                             // prepare the transfer of data to #value-ReferenceType
-                            if (selectedItems.length > 0) {
+                            if (selectedItems.length <= 0) {
+                                // TODO: policy: should there be any punishment?
+                            } else {
                                 $( "#value-ReferenceType" ).val( selectedItems[0].PropertyValues.value );
                             }
                         }
@@ -339,8 +347,13 @@
             }
         } );
 
+        // BUG:
+        //   NOT this.checked
+        //   AND
+        //   NOT $( "#checkbox-Boolean" ).attr( "checked" )
+        //
         $( "#checkbox-Boolean" ).on( 'change', function() {
-            if (this.checked) {
+            if ( $( "#checkbox-Boolean" ).prop( "checked" ) === true) {
                 $( "#value-Boolean" ).val( "True" );
             } else {
                 $( "#value-Boolean" ).val( "False" );
@@ -431,6 +444,8 @@
                             'dialogOwner': this
                         };
 
+                    console.log('value ' + value + ' of type ' + typeof(value));
+
                     $( "#dialogs" ).trigger( "propertyUpdated", parcel );
                 },
                 Cancel: function() {
@@ -457,7 +472,9 @@
                 var value = this.value(),
                     stringValue = kendo.toString(value, "yyyy-MM-ddTHH:mm:ss");
 
-                console.log('value ' + stringValue + ' of type ' + typeof(stringValue));
+                console.log('value ' + value + ' of type ' + typeof(value));
+
+                value = $( "#value-DateTime" ).val( stringValue );
             }
         } );
 
@@ -516,6 +533,11 @@
                         .dialog( "open" );
                 } );
 
+        // BUG:
+        //   NOT this.checked
+        //   AND
+        //   NOT $( "#checkbox-Boolean" ).attr( "checked" )
+        //
         $( "#tbl" ).on(
                 "click",
                 "tr.boolean.mutable > td > button",
@@ -531,11 +553,11 @@
 
                     // synchronize the checkbox
                     if (value === "True") {
-                        $( "#checkbox-Boolean" ).attr( "checked", true );
+                        $( "#checkbox-Boolean" ).prop( "checked", true );
                     } else {
                         // NOTE: This is not to say that the value is "False"
                         //         as it may be null.
-                        $( "#checkbox-Boolean" ).attr( "checked", false );
+                        $( "#checkbox-Boolean" ).prop( "checked", false );
                     }
 
                     $( "#dialog-Boolean" )
@@ -554,7 +576,8 @@
                         value = row.find( "td" ).eq( 3 ).text();
 
                     // transfer value to form
-                    $( "#value-Date" ).val( value );
+                    var stringValue = kendo.toString(value, "M/d/yyyy h:mm tt");
+                    $( "#value-Date" ).val( stringValue );
 
                     $( "#dialog-Date" )
                         .dialog( "option", {
@@ -630,7 +653,14 @@
                         'ValueType': 'Value',
                         'Value': 'True',
                         'OwnerId': 31,
-                        'Property': 'HowBrokeAmI',
+                        'Property': 'AmIBroke',
+                        'Type': 'boolean',
+                        'IsMutable': true
+                    }, {
+                        'ValueType': 'Value',
+                        'Value': 'False',
+                        'OwnerId': 31,
+                        'Property': 'am-i-happie',
                         'Type': 'boolean',
                         'IsMutable': true
                     }, {
