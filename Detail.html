@@ -10,7 +10,7 @@
 
 <div id="output"></div>
 
-<div id="dialogs">
+<div id="dialogs" style="display: none;">
     <div id="dialog-SimpleTypes">
         <form>
             <label for="value-SimpleType">Value:</label>
@@ -27,8 +27,9 @@
 
     <div id="dialog-DateTime">
         <form>
-            <label for="value-DateTime">DateTime:</label>
-            <input type="text" id="value-DateTime"/>
+            <input type="text" id="value-DateTime" hidden/>
+            <label for="display-DateTime">DateTime:</label>
+            <input type="text" id="display-DateTime"/>
         </form>
     </div>
 
@@ -153,7 +154,8 @@
         "use strict";
 
         // (1) hide the dialogs while content is being loaded
-        $( "#dialogs" ).hide();
+        //       the markup is hidden directly
+        // $( "#dialogs" ).hide();
 
         // (2) prepare the templates, one of which holds the list of properties
         var failureTemplate = Handlebars.compile( $( "#failure-template" ).html() );
@@ -444,8 +446,6 @@
                             'dialogOwner': this
                         };
 
-                    console.log('value ' + value + ' of type ' + typeof(value));
-
                     $( "#dialogs" ).trigger( "propertyUpdated", parcel );
                 },
                 Cancel: function() {
@@ -455,7 +455,7 @@
             }
         } );
 
-        $( "#value-DateTime" ).kendoDateTimePicker( {
+        $( "#display-DateTime" ).kendoDateTimePicker( {
 //          format: "M/d/yyyy h:mm tt",
             animation: {
                 close: {
@@ -469,12 +469,16 @@
             },
             // http://www.telerik.com/forums/format-of-datepicker-value
             change: function() {
-                var value = this.value(),
-                    stringValue = kendo.toString(value, "yyyy-MM-ddTHH:mm:ss");
+                var displayValue = kendo.toString(this.value(), "M/d/yyyy h:mm tt"),
+                    value = kendo.toString(this.value(), "yyyy-MM-ddTHH:mm:ss");
 
-                console.log('value ' + value + ' of type ' + typeof(value));
+                // TODO: policy: capture the timezone as a 4 character string (for example '0800')
 
-                value = $( "#value-DateTime" ).val( stringValue );
+                console.log('actual-value  : ' + value + ' of type ' + typeof(value));
+                console.log('display-value : ' + displayValue + ' of type ' + typeof(displayValue));
+
+                //$( "#display-DateTime" ).val( displayValue );
+                $( "#value-DateTime" ).val( value );
             }
         } );
 
@@ -576,7 +580,6 @@
                         value = row.find( "td" ).eq( 3 ).text();
 
                     // transfer value to form
-                    var stringValue = kendo.toString(value, "M/d/yyyy h:mm tt");
                     $( "#value-Date" ).val( stringValue );
 
                     $( "#dialog-Date" )
@@ -587,16 +590,29 @@
                         .dialog( "open" );
                 } );
 
+        // BUG: you cannot use the kendo function to convert a string to a string.
+        // TODO: retrieve string value from master
+        // TODO: convert string value into display value
+        // TODO:   (A) conversion of string value into standard datatype
+        // TODO:   (B) conversion of standard datatype into display value
+        // TODOs
+        // TODO: implementation strategy:
+        // TODO:   use moment.js in order to convert a string into a Date (from which the display value is converted)
         $( "#tbl" ).on(
                 "click",
                 "tr.DateTime.mutable > td > button",
                 function() {
                     var row = $( this ).parents( "tr" ),
-                            type = row.find( "td" ).eq( 4 ).text(),
-                            value = row.find( "td" ).eq( 3 ).text();
+                        type = row.find( "td" ).eq( 4 ).text(),
+                        value = row.find( "td" ).eq( 3 ).text(),
+                        // BUG
+                        stringValue = kendo.toString(value, "M/d/yyyy h:mm tt");
+
+                    // TODO: policy: capture the timezone as a 4 character string (for example '0800')
 
                     // transfer value to form
                     $( "#value-DateTime" ).val( value );
+                    $( "#display-DateTime" ).val( stringValue );
 
                     $( "#dialog-DateTime" )
                             .dialog( "option", {
