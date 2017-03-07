@@ -89,6 +89,7 @@
 <link rel="stylesheet" href="http://kendo.cdn.telerik.com/2017.1.118/styles/kendo.metro.min.css">
 <script src="http://kendo.cdn.telerik.com/2017.1.118/js/kendo.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/moment-with-locales.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.11/moment-timezone-with-data-2010-2020.min.js"></script>
 <!-- TODO surgery #6 end -->
 
 <script
@@ -98,15 +99,6 @@
     src="https://code.jquery.com/ui/1.12.0/jquery-ui.js" integrity="sha256-0YPKAwZP7Mp3ALMRVB2i8GXeEndvCq3eSl/WsAl1Ryk="
     crossorigin="anonymous">
 </script>
-
-<!-- TODO surgery #7 begin: remove infinity.js and oulde timepicker detritus
-<script
-    src="https://cdnjs.cloudflare.com/ajax/libs/infinity/0.2.2/infinity.min.js">
-</script>
-<!- script
-    src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-timepicker-addon/1.6.1/jquery-ui-timepicker-addon.js">
-</script ->
--->
 
 <script>
     function rowToRecord( row ) {
@@ -149,6 +141,50 @@
 
         return result;
     };
+
+    function officialDateTimeValueToDisplayDateTimeValue(value) {
+        "use strict";
+
+        var tzGuess = moment.tz.guess(),
+            remoteMoment,
+            localMoment;
+
+        if (tzGuess === null || tzGuess === undefined) {
+            throw new Error('pants');
+        } else {
+
+            if (value === null || value === undefined || value.trim() === "") {
+                return "";
+            } else {
+                remoteMoment = moment( value );
+                localMoment = remoteMoment.tz( tzGuess );
+                return localMoment.format( "M/D/YYYY h:mm A" );
+            }
+        }
+    }
+
+    function displayDateTimeValueToOfficialDateTimeValue(displayValue) {
+        "use strict";
+
+        var tzGuess = moment.tz.guess(),
+            localMoment,
+            remoteMoment,
+            officialValue;
+
+        if (tzGuess === null || tzGuess === undefined) {
+            throw new Error('pants');
+        } else {
+
+            if ( displayValue === null || displayValue === undefined || displayValue.trim() === "" ) {
+                return null;
+            } else {
+                localMoment = moment.tz( displayValue, "M/D/YYYY h:mm A", tzGuess );
+                remoteMoment = localMoment.tz( "UTC" );
+                officialValue = remoteMoment.format( "YYYY-MM-DDTHH:mm:ss" ) + "Z";
+                return officialValue;
+            }
+        }
+    }
 
     function initialize( data, referencesInspectedCallback, updatePropertyCallback ) {
         "use strict";
@@ -230,7 +266,7 @@
 
                             // prepare the transfer of data to #value-ReferenceType
                             if (selectedItems.length <= 0) {
-                                // TODO: policy: should there be any punishment?
+                                // TODO: policy: should there be any punishment? any notice of failure provided?
                             } else {
                                 $( "#value-ReferenceType" ).val( selectedItems[0].PropertyValues.value );
                             }
@@ -392,6 +428,7 @@
         } );
 
         // create the dialog for Date types (mount datepicker to '#value-Date')
+        // TODO: Date handling has NOT been fully implemented yet
         $( "#dialog-Date" ).dialog( {
             autoOpen: false,
             open: function() {
@@ -470,23 +507,17 @@
             // http://www.telerik.com/forums/format-of-datepicker-value
             change: function() {
                 var displayValue = kendo.toString(this.value(), "M/d/yyyy h:mm tt"),
-                    value = kendo.toString(this.value(), "yyyy-MM-ddTHH:mm:ss");
+                    value = displayDateTimeValueToOfficialDateTimeValue( displayValue ); //kendo.toString(this.value(), "yyyy-MM-ddTHH:mm:ss");
 
                 // TODO: policy: capture the timezone as a 4 character string (for example '0800')
 
-                console.log('actual-value  : ' + value + ' of type ' + typeof(value));
-                console.log('display-value : ' + displayValue + ' of type ' + typeof(displayValue));
+                console.log('display-value : ' + displayValue);
+                console.log('actual-value  : ' + value);
 
                 //$( "#display-DateTime" ).val( displayValue );
                 $( "#value-DateTime" ).val( value );
             }
         } );
-
-// TODO: resurrect this for the day when we need a proper picker for the DateTime type
-//      $( "#value-Date" ).datetimepicker( {
-//          dateFormat: "yy-mm-ddT",
-//          timeFormat: "HH:mm:ss Z"
-//      } );
 
         //////////////////////////////////////////////////////////////////
         // (6) begin: setup of edit buttons
@@ -592,12 +623,19 @@
 
         // BUG: you cannot use the kendo function to convert a string to a string.
         // TODO: retrieve string value from master
+        // TODO
         // TODO: convert string value into display value
         // TODO:   (A) conversion of string value into standard datatype
         // TODO:   (B) conversion of standard datatype into display value
-        // TODOs
+        // TODO
+        // TODO: convert string value into widget native value
+        // TODO:   (A) conversion of string value into standard datatype
+        // TODO:   (B) conversion of standard datatype into widget native value
+        // TODO
         // TODO: implementation strategy:
         // TODO:   use moment.js in order to convert a string into a Date (from which the display value is converted)
+        // TODO:   the two conversions above may be able to be coalesced into one and a half.
+
         $( "#tbl" ).on(
                 "click",
                 "tr.DateTime.mutable > td > button",
@@ -605,21 +643,24 @@
                     var row = $( this ).parents( "tr" ),
                         type = row.find( "td" ).eq( 4 ).text(),
                         value = row.find( "td" ).eq( 3 ).text(),
-                        // BUG
-                        stringValue = kendo.toString(value, "M/d/yyyy h:mm tt");
+                        displayValue;
 
-                    // TODO: policy: capture the timezone as a 4 character string (for example '0800')
+                    try {
+                        displayValue = officialDateTimeValueToDisplayDateTimeValue(value);
 
-                    // transfer value to form
-                    $( "#value-DateTime" ).val( value );
-                    $( "#display-DateTime" ).val( stringValue );
+                        // transfer value to form (3/14/2017 1:30 PM)
+                        $( "#value-DateTime" ).val( value );
+                        $( "#display-DateTime" ).val( displayValue );
 
-                    $( "#dialog-DateTime" )
-                            .dialog( "option", {
-                                title: "Editing " + type + " content"
-                            } )
-                            .data( "editingRow", row )
-                            .dialog( "open" );
+                        $( "#dialog-DateTime" )
+                                .dialog( "option", {
+                                    title: "Editing " + type + " content"
+                                } )
+                                .data( "editingRow", row )
+                                .dialog( "open" );
+                    } catch (e) {
+                        // TODO: policy: announce failure
+                    }
                 } );
     }
 
@@ -645,6 +686,13 @@
             successCallback( {
                 'ResultSet': [
                     {
+                        'ValueType': 'Value',
+                        'Value': '2017-03-05T23:59:59Z',
+                        'OwnerId': 31,
+                        'Property': 'WhenToSnuggle',
+                        'Type': 'DateTime',
+                        'IsMutable': true
+                    }, {
                         'ValueType': 'Value',
                         'Value': null,
                         'OwnerId': 31,
