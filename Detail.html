@@ -142,56 +142,48 @@
         return result;
     };
 
+    var tzGuess = moment.tz.guess();
+
     function officialDateTimeValueToDisplayDateTimeValue(value) {
         "use strict";
 
-        var tzGuess = moment.tz.guess(),
-            remoteMoment,
+        var remoteMoment,
             localMoment;
 
-        if (tzGuess === null || tzGuess === undefined) {
-            throw new Error('pants');
+        if ( value === null || value === undefined || value.trim() === "" ) {
+            return "";
         } else {
-
-            if (value === null || value === undefined || value.trim() === "") {
-                return "";
-            } else {
-                remoteMoment = moment( value );
-                localMoment = remoteMoment.tz( tzGuess );
-                return localMoment.format( "M/D/YYYY h:mm A" );
-            }
+            remoteMoment = moment( value );
+            localMoment = remoteMoment.tz( tzGuess );
+            return localMoment.format( "M/D/YYYY h:mm A" );
         }
     }
 
     function displayDateTimeValueToOfficialDateTimeValue(displayValue) {
         "use strict";
 
-        var tzGuess = moment.tz.guess(),
-            localMoment,
+        var localMoment,
             remoteMoment,
             officialValue;
 
-        if (tzGuess === null || tzGuess === undefined) {
-            throw new Error('pants');
+        if ( displayValue === null || displayValue === undefined || displayValue.trim() === "" ) {
+            return null;
         } else {
-
-            if ( displayValue === null || displayValue === undefined || displayValue.trim() === "" ) {
-                return null;
-            } else {
-                localMoment = moment.tz( displayValue, "M/D/YYYY h:mm A", tzGuess );
-                remoteMoment = localMoment.tz( "UTC" );
-                officialValue = remoteMoment.format( "YYYY-MM-DDTHH:mm:ss" ) + "Z";
-                return officialValue;
-            }
+            // structure of display-value: 3/14/2017 1:30 PM
+            localMoment = moment.tz( displayValue, "M/D/YYYY h:mm A", tzGuess );
+            remoteMoment = localMoment.tz( "UTC" );
+            officialValue = remoteMoment.format( "YYYY-MM-DDTHH:mm:ss" ) + "Z";
+            return officialValue;
         }
     }
 
     function initialize( data, referencesInspectedCallback, updatePropertyCallback ) {
         "use strict";
 
-        // (1) hide the dialogs while content is being loaded
-        //       the markup is hidden directly
-        // $( "#dialogs" ).hide();
+        // (1) insist upon the existence of a local timezone with which to work!
+        if (tzGuess === null || tzGuess === undefined) {
+            throw new Error('pants');
+        }
 
         // (2) prepare the templates, one of which holds the list of properties
         var failureTemplate = Handlebars.compile( $( "#failure-template" ).html() );
@@ -507,14 +499,14 @@
             // http://www.telerik.com/forums/format-of-datepicker-value
             change: function() {
                 var displayValue = kendo.toString(this.value(), "M/d/yyyy h:mm tt"),
-                    value = displayDateTimeValueToOfficialDateTimeValue( displayValue ); //kendo.toString(this.value(), "yyyy-MM-ddTHH:mm:ss");
-
-                // TODO: policy: capture the timezone as a 4 character string (for example '0800')
+                  //value = kendo.toString(this.value(), "yyyy-MM-ddTHH:mm:ss");
+                    value = displayDateTimeValueToOfficialDateTimeValue( displayValue );
 
                 console.log('display-value : ' + displayValue);
                 console.log('actual-value  : ' + value);
 
-                //$( "#display-DateTime" ).val( displayValue );
+                // commented out: the widget already updates this field
+                // $( "#display-DateTime" ).val( displayValue );
                 $( "#value-DateTime" ).val( value );
             }
         } );
@@ -621,7 +613,6 @@
                         .dialog( "open" );
                 } );
 
-        // BUG: you cannot use the kendo function to convert a string to a string.
         // TODO: retrieve string value from master
         // TODO
         // TODO: convert string value into display value
@@ -648,7 +639,6 @@
                     try {
                         displayValue = officialDateTimeValueToDisplayDateTimeValue(value);
 
-                        // transfer value to form (3/14/2017 1:30 PM)
                         $( "#value-DateTime" ).val( value );
                         $( "#display-DateTime" ).val( displayValue );
 
@@ -844,7 +834,9 @@
     // TODO: one callback for static properties
     // TODO: &
     // TODO: one callback for per instance properties
-    // TODO: different endpoints require different client-service signatures
+    // TODO: different endpoints require different client-service signatures (unless this isn't true).
+    // TODO: update 2017-03-06: there are no enums, only references. the UI may not be equipped to
+    // TODO:                    differentiate between these two cases.
     fauxDataSourceService.retrieveProperties(
         id,
         'rfsItem',
